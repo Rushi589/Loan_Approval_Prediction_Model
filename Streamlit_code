@@ -1,0 +1,85 @@
+import streamlit as st
+import pickle
+import numpy as np
+import pandas as pd
+import base64
+
+# Load the complete pipeline
+with open('pipeline (3).pkl', 'rb') as f:
+    pipeline = pickle.load(f)
+
+# Function to get image as base64
+def get_image_base64(image_path):
+    with open(image_path, "rb") as f:
+        data = f.read()
+    return base64.b64encode(data).decode()
+
+# Load your local image as base64
+logo_base64 = get_image_base64('ghrcemnewlogo.png')  # <-- your local file
+
+# Layout: logo and college name side-by-side
+st.markdown(
+    f"""
+    <div style="display: flex; align-items: center;">
+        <img src="data:image/png;base64,{logo_base64}" alt="Logo" style="width: 100px; margin-right: 20px;">
+        <h2 style="color: #4B0082;">GH Raisoni College Of Engineering, Pune</h2>
+    </div>
+    """,
+    unsafe_allow_html=True
+)
+
+# Title and subtitle
+st.title("🏦 Loan Approval Prediction App")
+st.write("### Please enter your loan application details below:")
+
+# Input form
+with st.form("loan_form"):
+    Gender = st.selectbox("Gender", ["Select Gender", "Male", "Female"])
+    Married = st.selectbox("Married", ["Select Marital Status", "Yes", "No"])
+    Dependents = st.selectbox("Dependents", ["Select Dependents", "0", "1", "2", "3+"])
+    Education = st.selectbox("Education", ["Select Education Status", "Graduate", "Not Graduate"])
+    Self_Employed = st.selectbox("Self Employed", ["Select Self Employed Status", "Yes", "No"])
+    ApplicantIncome = st.number_input("Applicant Income", min_value=0)
+    CoapplicantIncome = st.number_input("Coapplicant Income", min_value=0)
+    LoanAmount = st.number_input("Loan Amount (in thousands)", min_value=0)
+    Loan_Amount_Term = st.number_input("Loan Amount Term (in days)", min_value=0)
+    Credit_History = st.selectbox("Credit History", ["Select Credit History", "1.0", "0.0"])
+    Property_Area = st.selectbox("Property Area", ["Select Property Area", "Urban", "Semiurban", "Rural"])
+
+    submit = st.form_submit_button("Predict")
+
+# On prediction
+if submit:
+    # Validation to ensure all fields are selected
+    if (
+        Gender.startswith("Select") or Married.startswith("Select") or Dependents.startswith("Select") or
+        Education.startswith("Select") or Self_Employed.startswith("Select") or
+        Credit_History.startswith("Select") or Property_Area.startswith("Select")
+    ):
+        st.warning("⚠️ Please select all fields properly before submitting.")
+    else:
+        try:
+            # Wrap input into a single-row DataFrame
+            input_df = pd.DataFrame([{
+                "Gender": Gender,
+                "Married": Married,
+                "Dependents": Dependents,
+                "Education": Education,
+                "Self_Employed": Self_Employed,
+                "ApplicantIncome": ApplicantIncome,
+                "CoapplicantIncome": CoapplicantIncome,
+                "LoanAmount": LoanAmount,
+                "Loan_Amount_Term": Loan_Amount_Term,
+                "Credit_History": float(Credit_History),
+                "Property_Area": Property_Area
+            }])
+
+            # Prediction
+            prediction = pipeline.predict(input_df)[0]
+
+            if prediction == 1:
+                st.success("✅ Cogratulations!,Your Loan is likely to be approved")
+            else:
+                st.error("❌ Sorry!,Your Loan is likely to be rejected")
+        except Exception as e:
+            st.error(f"Error during prediction: {e}")
